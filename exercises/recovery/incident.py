@@ -33,7 +33,6 @@ import urllib.error
 import urllib.request
 import warnings
 from datetime import datetime, timezone
-from pathlib import Path
 
 os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "2")
 os.environ.setdefault("MLFLOW_ENABLE_ARTIFACTS_PROGRESS_BAR", "false")

@@ -224,7 +224,7 @@ def labels(model_uri: str | None):
         predict = predict_offline(model, model_uri.rsplit("/", 1)[-1])
     else:
         section(f"4. Delayed labels: what {API_URL} serves now")
-        status, body = http("GET", "/health", timeout=3)
+        status, _ = http("GET", "/health", timeout=3)
         if status != 200:
             say("The API does not answer, so nobody can measure what it serves. Measure one version offline:")
             say("  python exercises/recovery/triage.py labels --model-uri models:/f1-points-finish/<version>")
