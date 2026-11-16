@@ -20,3 +20,6 @@ results/
 dossier.*
 manifest.json
 exercises/acceptance/evidence/fairness_report.json
+
+# Classroom slide decks: local only (ELM and Emeritus branding)
+slides/
