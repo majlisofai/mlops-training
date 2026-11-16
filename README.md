@@ -1,62 +1,63 @@
-# mlops-training · Lesson 05: serve the model and roll back a faulty release
+# mlops-training · Lesson 08: fairness, transparency and the model card
 
 Synthetic datasets for hands-on MLOps training: data validation, leakage, drift, training-serving skew and delayed labels.
 
-**In this lesson** you put the F1 points-finish model behind a versioned HTTP API. The API loads the production model, `@champion`, from the MLflow Model Registry when it starts, and every answer says which model version made it. You write contract tests for the API, package it as a Docker image and load-test it with Locust against a service-level objective. Then you release a model that passes every lesson 04 quality gate but is too slow to serve, watch the load test fail, roll it back and prove that the service recovers. At the end the same serving check runs on GitHub Actions in your fork.
+**In this lesson** you ask for whom the F1 points-finish model works. You measure the champion per subgroup with fairlearn (accuracy, selection rate, false positive and false negative rate for rookies, team tiers and circuit types), write fairness and privacy requirements as gates, and watch the champion that passed every lesson 04 gate get blocked: it is far too optimistic about rookies. You try two mitigations and measure what they cost, choose a fairer model, check that no personal data reaches the model or the prediction log, and generate a model card from MLflow that records the evidence and the human decision. At the end the same check runs on GitHub Actions in your fork, once blocked and once passing.
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/majlisofai/mlops-training?ref=05-serve-model)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/majlisofai/mlops-training?ref=08-fairness)
 
 ## Trainees: start here
 
-1. **Open your codespace.** Click the badge above. Check that the branch is **`05-serve-model`**, then click **Create codespace**. A copy of VS Code opens in your browser. You need a GitHub account. The codespace runs on your account and uses your free monthly Codespaces hours.
+1. **Open your codespace.** Click the badge above. Check that the branch is **`08-fairness`**, then click **Create codespace**. A copy of VS Code opens in your browser. You need a GitHub account. The codespace runs on your account and uses your free monthly Codespaces hours.
 2. **Wait for the setup.** The first start takes a few minutes, because the codespace installs Docker and the Python packages. Wait until the terminal says the setup has finished before you run any command.
-3. **Open the lesson.** In the file explorer, open [`exercises/serve-model/README.md`](exercises/serve-model/README.md). Right-click it and choose **Open Preview** to read it formatted.
-4. **Do the nine steps** in the lesson, in order:
+3. **Open the lesson.** In the file explorer, open [`exercises/fairness/README.md`](exercises/fairness/README.md). Right-click it and choose **Open Preview** to read it formatted.
+4. **Do the ten steps** in the lesson, in order:
 
    | Step | What you do | You are done when |
    |---|---|---|
    | 1 | Start the MLflow server and open the MLflow UI | The MLflow UI opens in a browser tab |
-   | 2 | Run the lesson 04 pipeline with the good candidate | `PROMOTED: f1-points-finish version 1 is now @champion`, with 7 gates passed |
-   | 3 | Run the API with uvicorn and open its `/docs` page | The log says `Serving f1-points-finish version 1` |
-   | 4 | Call the API with curl | `/v1/predict` answers `"predictions":[1,0]`, and a bad entry gets 422 with one line per problem |
-   | 5 | Complete TODO 1 to TODO 3 in `exercises/serve-model/test_api.py` | `8 passed` |
-   | 6 | Build the Docker image and run the container | `curl http://127.0.0.1:8000/health` answers from the container |
-   | 7 | Load-test the API with Locust and check the SLO | `SLO MET` |
-   | 8 | Promote the huge forest, reload, load-test, roll back, reload, load-test | `SLO BROKEN` with version 2, `SLO MET` again with version 1 |
-   | 9 | Run the workflow **serve** in your fork, with the good and the huge candidate | The good run succeeds; the huge run fails at **5. Load test and SLO check** |
+   | 2 | Run the lesson 04 pipeline with the good candidate | `PROMOTED: f1-points-finish version 1 is now @champion` |
+   | 3 | Complete TODO 1 to TODO 3 in `exercises/fairness/fairness_report.py` and run it | The rookie row shows `0.646  0.875  0.762  0.037`, and the report is logged to the run |
+   | 4 | Start the API with a prediction log and send the 2025 season | `Sent 24 races (480 entries)`; with `--with-driver-code`, `24 races were refused` |
+   | 5 | Run the fairness and privacy gates, complete TODO 4 in `test_fairness.py` | `1 failed, 5 passed`: `rookie false positive rate gap +0.620 is above 0.55` |
+   | 6 | Run the mitigation test | Eight runs in the MLflow experiment `f1-points-finish-fairness` |
+   | 7 | Compare six candidates, promote the logistic regression, check it again | The gates end with `6 passed, 3 warnings` for version 8 |
+   | 8 | Generate the model card, fill in `model_card.yaml`, generate it again | `Placeholders still to fill in model_card.yaml: 0.` |
+   | 9 | Run the privacy gate on a leaky prediction log | `6 personal identifiers in exercises/fairness/examples/prediction_log_v0.jsonl` |
+   | 10 | Run the workflow **fairness** in your fork, with the default and the logreg candidate | The default run fails at **4. Fairness and privacy gates**; the logreg run succeeds |
 
-5. **Discuss** the four questions at the end of the lesson with your group.
+5. **Discuss** the five questions at the end of the lesson with your group.
 
 **Rules for this lesson**
 
 - Run every command from the repository root, `/workspaces/mlops-training`.
-- Keep the terminal with the MLflow server open while you work. Use other terminals for the API, the container and the commands (**Terminal → New Terminal**).
-- In this lesson you **push to your own fork** (step 9). You cannot push to `majlisofai/mlops-training`.
-- Do not change `slo.yaml` to make a model pass. Do not change `.github/workflows/serve.yml`.
-- Try the TODOs before you open the reference solution in `exercises/serve-model/solution/`.
+- Keep the terminal with the MLflow server open while you work. Use other terminals for the API and the commands (**Terminal → New Terminal**).
+- The subgroups (`rookie`, `team_tier`, `circuit_type`) are for measurement practice. They are **not protected characteristics**, and they are never model inputs. Treat `driver_code` and `driver_name` as personal data.
+- Do not change `fairness.yaml` to make a model pass. Do not change `.github/workflows/fairness.yml`.
+- In this lesson you **push to your own fork** (step 10). You cannot push to `majlisofai/mlops-training`.
+- Try the TODOs before you open the reference solutions in `exercises/fairness/solution/`.
 
 **If something goes wrong**
 
 | Problem | Fix |
 |---|---|
-| `mlflow: command not found`, `uvicorn: command not found` or `locust: command not found` | The setup has not finished. Wait, or run `pip install -r .devcontainer/requirements.txt`. |
+| `mlflow: command not found` or `ModuleNotFoundError: No module named 'fairlearn'` | The setup has not finished. Wait, or run `pip install -r .devcontainer/requirements.txt`. |
 | The MLflow UI shows **403** | Start the server with the full command from step 1, including `--allowed-hosts` and `--cors-allowed-origins`. |
-| A port does not open | Open the **Ports** tab, find **MLflow UI** (5000), **f1 API** (8000) or **Locust UI** (8089) and click the globe icon. If the port is not listed, click **Forward a Port** and type the number. |
-| The API or the tests stop with `Registered Model with name=f1-points-finish not found` or `Registered model alias champion not found` | There is no champion yet. Do step 2. |
-| The API or the tests stop with `Max retries exceeded` or `Connection refused` on port 5000 | The MLflow server is not running. Start it (step 1), then start the API again. |
-| `[Errno 98] address already in use` or `bind: address already in use` on port 8000 | Something else uses port 8000: the uvicorn API of step 3, or a container. Stop uvicorn with **Ctrl+C**, or run `docker stop f1-api`. |
-| `Cannot connect to the Docker daemon` | Docker is still starting. Wait a minute and try again. If it does not help, rebuild the codespace (**Ctrl+Shift+P** → **Codespaces: Rebuild Container**). |
-| `docker: Error response from daemon: Conflict. The container name "/f1-api" is already in use` | An old container with that name exists. Run `docker rm -f f1-api`, then run the container again. |
-| The container starts, then stops with `Connection refused` to `127.0.0.1:5000` | You left out `--network host`. Without it, the container cannot reach the MLflow server. |
-| `/health` still shows the old version after `promote.py` | That is expected. The API loads the model once. Run `curl -s -X POST http://127.0.0.1:8000/admin/reload`, or restart the API. |
-| `/admin/reload` answers `reload failed, still serving version ...` | The API could not load the new champion and kept the old one. Read the reason in the message. The MLflow server must be running. |
-| `check_slo.py` says `has no row for POST /v1/predict` | Locust sent no request: the API was not running at `http://127.0.0.1:8000`. Start the container (step 6) and run the load test again. |
-| The good model breaks the SLO | The codespace was busy: close the Locust web UI and other load tests, wait a minute and run `load_test.sh` again. |
-| pytest says `import file mismatch` | You collected `test_api.py` and `solution/test_api.py` in one run. Run one file at a time. |
-| You pushed to your fork, but no workflow run started | Actions are off in a new fork. Open the **Actions** tab of your fork and click **I understand my workflows, go ahead and enable them**. Then start a run with **Run workflow** (step 9). |
-| There is no **Run workflow** button | Make `05-serve-model` the default branch of your fork (**Settings → General → Default branch**), then reload the **Actions** page. |
+| A port does not open | Open the **Ports** tab, find **MLflow UI** (5000) or **f1 API** (8000) and click the globe icon. If the port is not listed, click **Forward a Port** and type the number. |
+| `Registered model alias champion not found` or `Could not find models:/f1-points-finish@champion` | There is no champion yet. Do step 2. |
+| `Max retries exceeded` or `Connection refused` on port 5000 | The MLflow server is not running. Start it (step 1). |
+| `TODO 1: subgroup_frame() is not written yet` | Expected in step 3. Complete TODO 1 to TODO 3 in `fairness_report.py` and delete the `raise` lines. |
+| `[Errno 98] address already in use` on port 8000 | The lesson 05 API or its container still runs. Stop uvicorn with **Ctrl+C**, or run `docker stop f1-api`. |
+| `send_season.py` says `Connection refused` | The logged API is not running. Start it (step 4). |
+| `no_personal_data_in_prediction_log` is **NOT CHECKED** | There is no `logs/predictions.jsonl` yet. Do step 4. |
+| The gates check the wrong model version | The gates and the report check `@champion`. To check another version, set `MODEL_URI`, for example `MODEL_URI=models:/f1-points-finish@candidate`. |
+| The model card says `fairness_gate_report.json` is for version 1, not version 8 | Run the gates again (step 7) before `model_card.py`. |
+| The model card says `No fairness report in the run` | Run `fairness_report.py` for that version first: the card reads the report from the model's run. |
+| pytest says `import file mismatch` | You collected `test_fairness.py` and `solution/test_fairness.py` in one run. Run one of them at a time. |
+| You pushed to your fork, but no workflow run started | Actions are off in a new fork. Open the **Actions** tab of your fork and click **I understand my workflows, go ahead and enable them**. Then start a run with **Run workflow** (step 10). |
+| There is no **Run workflow** button | Make `08-fairness` the default branch of your fork (**Settings → General → Default branch**), then reload the **Actions** page. |
 | The push is rejected with `refusing to allow ... to create or update workflow` | You changed a file in `.github/workflows/`. Undo your change to that file, commit, and push again. |
-| You closed the browser tab | Go to [github.com/codespaces](https://github.com/codespaces) and open your codespace again. Your work is still there. Start the MLflow server and the container again. |
+| You closed the browser tab | Go to [github.com/codespaces](https://github.com/codespaces) and open your codespace again. Your work is still there. Start the MLflow server and the API again. |
 
 When you finish, stop the codespace (**Codespaces** menu at the bottom left → **Stop Current Codespace**) so it does not use your hours.
 
@@ -74,6 +75,7 @@ The codespace runs Python 3.12 and installs the tools from [`.devcontainer/requi
 | Quality gates and CI | pytest for the gates, GitHub Actions for the release pipeline ([`.github/workflows/release.yml`](.github/workflows/release.yml)) |
 | Model serving | FastAPI and uvicorn for the API (port 8000), Docker (docker-in-docker) for the container image, pytest with FastAPI's TestClient for the contract tests |
 | Load testing and CI | Locust (web UI on port 8089), GitHub Actions for the serving check ([`.github/workflows/serve.yml`](.github/workflows/serve.yml)) |
+| Fairness, privacy and transparency | fairlearn (`MetricFrame`) for per-subgroup metrics, pytest for the fairness and privacy gates, a model card generated from MLflow, GitHub Actions for the fairness check ([`.github/workflows/fairness.yml`](.github/workflows/fairness.yml)) |
 
 ## Datasets
 
