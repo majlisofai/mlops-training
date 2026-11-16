@@ -16,3 +16,6 @@ results/
 
 # Monitoring (exercises/monitoring): the prediction log, replay manifests, incidents
 logs/
+
+# Classroom slide decks: local only (ELM and Emeritus branding)
+slides/
