@@ -1,0 +1,5 @@
+# The packages the acceptance workflow needs in GitHub Actions: the lesson 05 serving check
+# (lesson 04 pipeline, API, contract tests, Locust), plus pip-audit for the dependency gate.
+# The same versions as .devcontainer/requirements.txt.
+-r ../serve-model/requirements-ci.txt
+pip-audit==2.10.1

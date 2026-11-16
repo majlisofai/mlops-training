@@ -12,6 +12,7 @@ Usage:
 """
 
 import csv
+import os
 import random
 from collections import defaultdict
 from pathlib import Path
@@ -38,6 +39,11 @@ RACE_ENTRIES = load_races()
 
 class RaceEngineer(HttpUser):
     wait_time = between(0.5, 1.5)
+
+    def on_start(self):
+        # Lesson 09: the secured API needs a client key. Send it when API_KEY is set.
+        if os.environ.get("API_KEY"):
+            self.client.headers["X-API-Key"] = os.environ["API_KEY"]
 
     @task(10)
     def predict_a_race(self):

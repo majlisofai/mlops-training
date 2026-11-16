@@ -19,6 +19,8 @@ from mlflow import MlflowClient
 HERE = Path(__file__).parent
 TARGET = "points_finish"
 REPORT = Path(os.environ.get("GATE_REPORT", "gate_report.json"))
+# The alias of the version to check. Lesson 09's acceptance suite checks @champion again.
+ALIAS = os.environ.get("GATE_ALIAS", "candidate")
 
 GATES = []      # one entry per gate, filled while the tests run
 CANDIDATE = {}  # which model version the gates checked
@@ -43,9 +45,9 @@ def holdout(races, criteria) -> pd.DataFrame:
 
 @pytest.fixture(scope="session")
 def candidate(criteria):
-    """The model version that the alias @candidate points to."""
+    """The model version that the alias @candidate points to (or GATE_ALIAS, if set)."""
     mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000"))
-    version = MlflowClient().get_model_version_by_alias(criteria["model_name"], "candidate")
+    version = MlflowClient().get_model_version_by_alias(criteria["model_name"], ALIAS)
     CANDIDATE.update(model=criteria["model_name"], version=version.version, run_id=version.run_id)
     return version
 

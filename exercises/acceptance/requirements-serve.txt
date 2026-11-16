@@ -1,0 +1,11 @@
+# The packages the API needs in its Docker image (lesson 09). The same versions as
+# .devcontainer/requirements.txt, so the image loads the model with the libraries that trained it.
+# mlflow-skinny is MLflow without the tracking server and the UI: enough to load a model.
+mlflow-skinny==3.18.0
+scikit-learn==1.9.1
+skops==0.16.0
+pandas==2.3.3
+numpy==2.3.5
+scipy==1.16.3
+fastapi==0.163.1
+uvicorn==0.54.0

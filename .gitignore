@@ -13,3 +13,10 @@ gate_report.*
 
 # Load tests (exercises/serve-model)
 results/
+
+# Acceptance (exercises/acceptance): API keys, the release dossier, the local copy of the
+# manifest, and the subgroup report that subgroup_check.py makes again for each release
+.secrets/
+dossier.*
+manifest.json
+exercises/acceptance/evidence/fairness_report.json

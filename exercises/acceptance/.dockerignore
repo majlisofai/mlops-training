@@ -1,0 +1,7 @@
+# Send only what the image needs to the Docker build. Never the keys (.secrets/ is outside
+# this folder anyway) and never the evidence or the tests.
+*
+!app.py
+!solution/app.py
+!security.py
+!requirements-serve.txt

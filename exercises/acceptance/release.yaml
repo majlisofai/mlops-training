@@ -1,0 +1,51 @@
+# The release under acceptance, who owns it, and what the acceptance suite checks.
+# accept.py reads this file and writes the release dossier. README.md explains each part.
+
+model_name: f1-points-finish
+alias: champion                # the version under acceptance: the one that the API serves
+
+# Who is accountable for what. Write real names or GitHub user names (step 1).
+owners:
+  model: your-name             # trained and proposed the model (candidate.yaml, proposed_by)
+  data: your-name              # f1/data/races.csv and its validation
+  service: your-name           # the API, its image and its SLO
+  security: your-name          # the keys, the access tests and the dependency audit
+
+# Who may set the decision to "ship" with decide.py. In GitHub Actions the required
+# reviewers of the environment "production" take this role instead.
+approvers:
+  - your-name
+
+integrity:
+  # Files that manifest.py fingerprints next to the model files. A change after the
+  # sign-off fails the integrity gate.
+  files:
+    - f1/data/races.csv                       # the data the model was trained and gated on
+    - exercises/quality-gates/criteria.yaml   # the release requirements (lesson 04)
+    - exercises/serve-model/slo.yaml          # the service-level objective (lesson 05)
+  # The only types that skops may load from the model file besides its built-in safe list.
+  # The model's own MLmodel file also lists trusted types, but anyone who can change the
+  # model file can change that list too. This list lives in git, under review.
+  allowed_skops_types:
+    - sklearn.tree._tree.Tree
+
+dependencies:
+  # pip-audit checks the packages inside the serving image for known vulnerabilities.
+  # Any finding fails the gate unless it is listed here with a reason, an owner and an expiry.
+  accepted:
+    []
+    # - id: GHSA-xxxx-xxxx-xxxx
+    #   package: example
+    #   reason: the vulnerable function is not used by the API
+    #   accepted_by: your-name
+    #   expires: 2027-01-31
+
+# subgroup_check.py: the lesson 04 rookie gate, for every reporting subgroup in f1/data/README.md.
+subgroups:
+  columns: [rookie, team_tier]
+  min_accuracy: 0.60           # the lesson 04 rookie floor (criteria.yaml, min_accuracy_rookie)
+
+# Evidence from other lessons. A missing file means "evidence missing": do not ship.
+evidence:
+  model_card: exercises/acceptance/evidence/model_card.md
+  fairness_report: exercises/acceptance/evidence/fairness_report.json

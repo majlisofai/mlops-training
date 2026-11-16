@@ -34,3 +34,6 @@ uvicorn==0.54.0
 # FastAPI's TestClient. Starlette 1.10 uses httpx2; with the older httpx it warns.
 httpx2==2.16.0
 locust==2.47.0
+
+# Security gates (exercises/acceptance): known vulnerabilities in the serving image
+pip-audit==2.10.1

@@ -1,62 +1,73 @@
-# mlops-training · Lesson 05: serve the model and roll back a faulty release
+# mlops-training · Lesson 09: security gates and production-readiness acceptance
 
 Synthetic datasets for hands-on MLOps training: data validation, leakage, drift, training-serving skew and delayed labels.
 
-**In this lesson** you put the F1 points-finish model behind a versioned HTTP API. The API loads the production model, `@champion`, from the MLflow Model Registry when it starts, and every answer says which model version made it. You write contract tests for the API, package it as a Docker image and load-test it with Locust against a service-level objective. Then you release a model that passes every lesson 04 quality gate but is too slow to serve, watch the load test fail, roll it back and prove that the service recovers. At the end the same serving check runs on GitHub Actions in your fork.
+**In this lesson** you make the F1 points-finish API ready for production, and you prove it. You protect the API with a client key and an admin key, so that nobody anonymous can ask for predictions or reload the model. You fingerprint the release with a SHA-256 manifest signed off in MLflow, and you audit the serving image for known vulnerabilities. Then one command runs every gate of the course, from data validation to the load test, and writes a release dossier with the evidence, the owners and a decision that only a named person can set to ship. Your trainer tampers with the model and deploys the unsecured image, and the suite blocks both. At the end the same acceptance runs on GitHub Actions in your fork, where your approval is the release decision, and you decide eight release scenarios on your own.
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/majlisofai/mlops-training?ref=05-serve-model)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/majlisofai/mlops-training?ref=09-acceptance)
 
 ## Trainees: start here
 
-1. **Open your codespace.** Click the badge above. Check that the branch is **`05-serve-model`**, then click **Create codespace**. A copy of VS Code opens in your browser. You need a GitHub account. The codespace runs on your account and uses your free monthly Codespaces hours.
+1. **Open your codespace.** Click the badge above. Check that the branch is **`09-acceptance`**, then click **Create codespace**. A copy of VS Code opens in your browser. You need a GitHub account. The codespace runs on your account and uses your free monthly Codespaces hours.
 2. **Wait for the setup.** The first start takes a few minutes, because the codespace installs Docker and the Python packages. Wait until the terminal says the setup has finished before you run any command.
-3. **Open the lesson.** In the file explorer, open [`exercises/serve-model/README.md`](exercises/serve-model/README.md). Right-click it and choose **Open Preview** to read it formatted.
-4. **Do the nine steps** in the lesson, in order:
+3. **Open the lesson.** In the file explorer, open [`exercises/acceptance/README.md`](exercises/acceptance/README.md). Right-click it and choose **Open Preview** to read it formatted.
+4. **Do the eleven steps** in the lesson, in order:
 
    | Step | What you do | You are done when |
    |---|---|---|
-   | 1 | Start the MLflow server and open the MLflow UI | The MLflow UI opens in a browser tab |
-   | 2 | Run the lesson 04 pipeline with the good candidate | `PROMOTED: f1-points-finish version 1 is now @champion`, with 7 gates passed |
-   | 3 | Run the API with uvicorn and open its `/docs` page | The log says `Serving f1-points-finish version 1` |
-   | 4 | Call the API with curl | `/v1/predict` answers `"predictions":[1,0]`, and a bad entry gets 422 with one line per problem |
-   | 5 | Complete TODO 1 to TODO 3 in `exercises/serve-model/test_api.py` | `8 passed` |
-   | 6 | Build the Docker image and run the container | `curl http://127.0.0.1:8000/health` answers from the container |
-   | 7 | Load-test the API with Locust and check the SLO | `SLO MET` |
-   | 8 | Promote the huge forest, reload, load-test, roll back, reload, load-test | `SLO BROKEN` with version 2, `SLO MET` again with version 1 |
-   | 9 | Run the workflow **serve** in your fork, with the good and the huge candidate | The good run succeeds; the huge run fails at **5. Load test and SLO check** |
+   | 1 | Start MLflow, promote the good candidate, write your name into `release.yaml` | `PROMOTED: f1-points-finish version 1 is now @champion` |
+   | 2 | Make the API keys with `keys.py` and load them | `.secrets/api.env` exists, and `git check-ignore` says git ignores it |
+   | 3 | Complete TODO 1 and 2 in `app.py` and TODO 3 and 4 in `test_access.py` | `8 passed` |
+   | 4 | Build and run the secured container, call it with and without keys | 401 without a key, 403 with the wrong role, 200 with the right one |
+   | 5 | Sign the release manifest | `INTEGRITY OK: 10 files match the manifest` |
+   | 6 | Audit the dependencies of the image | `AUDIT OK` for `lab09-api:1`, 6 findings for the lesson 05 image |
+   | 7 | Measure the subgroups and write the model card | `SUBGROUPS OK`, and no `TODO` left in `evidence/model_card.md` |
+   | 8 | Run the acceptance suite and decide | Ten gates PASS, then `DECISION: SHIP ... set by <your name>` |
+   | 9 | Tamper with the model, deploy the unsecured image | `DO NOT SHIP` for each fault, then `INTEGRITY OK` again |
+   | 10 | Run the workflow **acceptance** in your fork, approve, then inject a fault | The approved run ships; the fault run is blocked at **7. Acceptance suite** |
+   | 11 | Decide the eight cards in `scenarios.md` alone | You wrote a decision, the evidence and a next action for each card |
 
-5. **Discuss** the four questions at the end of the lesson with your group.
+5. **Discuss** the five questions at the end of the lesson with your group.
 
 **Rules for this lesson**
 
 - Run every command from the repository root, `/workspaces/mlops-training`.
-- Keep the terminal with the MLflow server open while you work. Use other terminals for the API, the container and the commands (**Terminal → New Terminal**).
-- In this lesson you **push to your own fork** (step 9). You cannot push to `majlisofai/mlops-training`.
-- Do not change `slo.yaml` to make a model pass. Do not change `.github/workflows/serve.yml`.
-- Try the TODOs before you open the reference solution in `exercises/serve-model/solution/`.
+- Keep the terminal with the MLflow server open while you work. Use other terminals for the container and the commands (**Terminal → New Terminal**), and load the keys in each new terminal: `set -a; source .secrets/api.env; set +a`.
+- **Never commit, paste or share `.secrets/api.env` or a key.** If a key leaks, make new ones with `python exercises/acceptance/keys.py --rotate` and restart the API.
+- In this lesson you **push to your own fork** (step 10). You cannot push to `majlisofai/mlops-training`.
+- Do not change `criteria.yaml`, `slo.yaml` or `.github/workflows/acceptance.yml` to make a release pass, and do not sign a manifest again to hide a change.
+- Try the TODOs before you open the reference solution in `exercises/acceptance/solution/`. Do not open `solution/scenarios.md` before the scenario check.
 
 **If something goes wrong**
 
 | Problem | Fix |
 |---|---|
-| `mlflow: command not found`, `uvicorn: command not found` or `locust: command not found` | The setup has not finished. Wait, or run `pip install -r .devcontainer/requirements.txt`. |
+| `mlflow: command not found`, `uvicorn: command not found` or `No module named pip_audit` | The setup has not finished. Wait, or run `pip install -r .devcontainer/requirements.txt`. |
 | The MLflow UI shows **403** | Start the server with the full command from step 1, including `--allowed-hosts` and `--cors-allowed-origins`. |
-| A port does not open | Open the **Ports** tab, find **MLflow UI** (5000), **f1 API** (8000) or **Locust UI** (8089) and click the globe icon. If the port is not listed, click **Forward a Port** and type the number. |
-| The API or the tests stop with `Registered Model with name=f1-points-finish not found` or `Registered model alias champion not found` | There is no champion yet. Do step 2. |
-| The API or the tests stop with `Max retries exceeded` or `Connection refused` on port 5000 | The MLflow server is not running. Start it (step 1), then start the API again. |
-| `[Errno 98] address already in use` or `bind: address already in use` on port 8000 | Something else uses port 8000: the uvicorn API of step 3, or a container. Stop uvicorn with **Ctrl+C**, or run `docker stop f1-api`. |
+| A port does not open | Open the **Ports** tab, find **MLflow UI** (5000) or **f1 API** (8000) and click the globe icon. If the port is not listed, click **Forward a Port** and type the number. |
+| `Registered Model with name=f1-points-finish not found` or `Registered model alias champion not found` | There is no champion yet. Do step 1. |
+| `ERROR: API_CLIENT_KEY is not set` from `accept.py`, or `KeyError: 'API_CLIENT_KEY'` | This terminal has no keys. Run `set -a; source .secrets/api.env; set +a`. If the file does not exist, do step 2. |
+| `.secrets/api.env exists. Use --rotate` | You already have keys. Use them, or make new ones with `--rotate` and restart the container. |
+| The container stops with `RuntimeError: API_CLIENT_KEY is not set or shorter than 32 characters` | You left out `--env-file .secrets/api.env`. The API does not start without its keys. |
+| Every call answers `unknown API key`, also with the right variable | The container runs with other keys than your terminal: you ran `keys.py --rotate` after you started it. Stop the container and start it again. |
+| Access tests fail with `status 200: ... answers without a key` against the container | The container runs an image built before you did TODO 1 and 2. Build `lab09-api:1` again and restart the container. |
+| `[Errno 98] address already in use` or `bind: address already in use` on port 8000 | Another API uses port 8000: the lesson 05 container `f1-api`, uvicorn, or `lab09-unsecured`. Stop it with **Ctrl+C** or `docker stop <name>`. |
+| `docker: Error response from daemon: Conflict. The container name "/lab09-api" is already in use` | An old container with that name exists. Run `docker rm -f lab09-api`, then start it again. |
 | `Cannot connect to the Docker daemon` | Docker is still starting. Wait a minute and try again. If it does not help, rebuild the codespace (**Ctrl+Shift+P** → **Codespaces: Rebuild Container**). |
-| `docker: Error response from daemon: Conflict. The container name "/f1-api" is already in use` | An old container with that name exists. Run `docker rm -f f1-api`, then run the container again. |
-| The container starts, then stops with `Connection refused` to `127.0.0.1:5000` | You left out `--network host`. Without it, the container cannot reach the MLflow server. |
-| `/health` still shows the old version after `promote.py` | That is expected. The API loads the model once. Run `curl -s -X POST http://127.0.0.1:8000/admin/reload`, or restart the API. |
-| `/admin/reload` answers `reload failed, still serving version ...` | The API could not load the new champion and kept the old one. Read the reason in the message. The MLflow server must be running. |
-| `check_slo.py` says `has no row for POST /v1/predict` | Locust sent no request: the API was not running at `http://127.0.0.1:8000`. Start the container (step 6) and run the load test again. |
-| The good model breaks the SLO | The codespace was busy: close the Locust web UI and other load tests, wait a minute and run `load_test.sh` again. |
-| pytest says `import file mismatch` | You collected `test_api.py` and `solution/test_api.py` in one run. Run one file at a time. |
-| You pushed to your fork, but no workflow run started | Actions are off in a new fork. Open the **Actions** tab of your fork and click **I understand my workflows, go ahead and enable them**. Then start a run with **Run workflow** (step 9). |
-| There is no **Run workflow** button | Make `05-serve-model` the default branch of your fork (**Settings → General → Default branch**), then reload the **Actions** page. |
+| `NOT SIGNED: f1-points-finish version N has no tag integrity.manifest_sha256` | Do step 5. Each new champion version needs its own sign-off. |
+| `REFUSED: f1-points-finish version 1 was already signed` | That is the protection working. If a file changed, find out why before you think of `--force`. |
+| `INTEGRITY FAILED` and you did not run `tamper.py` | Something changed after the sign-off. Run `git status` for the data and criteria files, and `python exercises/acceptance/tamper.py --restore` if the trainer tampered. |
+| `TAMPERED ... is already tampered with. Run --restore first.` | Run `python exercises/acceptance/tamper.py --restore`. |
+| `AUDIT ERROR` or the dependency gate says `EVIDENCE MISSING` | pip-audit could not reach PyPI. Check the internet connection of the codespace and run it again. |
+| The model card gate says `it describes version N, not M` | Your card names another version. Write the version from `curl -s http://127.0.0.1:8000/health` into `**Model version:**`. |
+| `REFUSED: dossier.md was changed after accept.py wrote it` | Run `accept.py` again; do not edit the dossier by hand. The decision goes in with `decide.py`. |
+| The good model breaks the SLO in `accept.py` | The codespace was busy. Close other load tests, wait a minute and run `accept.py` again. |
+| pytest says `import file mismatch` | You collected `test_access.py` and `solution/test_access.py` in one run. Run one file at a time. |
+| You pushed to your fork, but no workflow run started | Actions are off in a new fork. Open the **Actions** tab of your fork and enable them. Then start a run with **Run workflow** (step 10). |
+| There is no **Run workflow** button | Make `09-acceptance` the default branch of your fork (**Settings → General → Default branch**), then reload the **Actions** page. |
+| **Ship decision** ran without asking you | Your fork's environment `production` has no required reviewer. Add yourself (step 10), then run the workflow again. |
 | The push is rejected with `refusing to allow ... to create or update workflow` | You changed a file in `.github/workflows/`. Undo your change to that file, commit, and push again. |
-| You closed the browser tab | Go to [github.com/codespaces](https://github.com/codespaces) and open your codespace again. Your work is still there. Start the MLflow server and the container again. |
+| You closed the browser tab | Go to [github.com/codespaces](https://github.com/codespaces) and open your codespace again. Your work is still there. Start the MLflow server and the container again, and load the keys. |
 
 When you finish, stop the codespace (**Codespaces** menu at the bottom left → **Stop Current Codespace**) so it does not use your hours.
 
@@ -74,6 +85,7 @@ The codespace runs Python 3.12 and installs the tools from [`.devcontainer/requi
 | Quality gates and CI | pytest for the gates, GitHub Actions for the release pipeline ([`.github/workflows/release.yml`](.github/workflows/release.yml)) |
 | Model serving | FastAPI and uvicorn for the API (port 8000), Docker (docker-in-docker) for the container image, pytest with FastAPI's TestClient for the contract tests |
 | Load testing and CI | Locust (web UI on port 8089), GitHub Actions for the serving check ([`.github/workflows/serve.yml`](.github/workflows/serve.yml)) |
+| Security and acceptance | FastAPI security dependencies (API keys), SHA-256 manifests, skops trusted types, pip-audit for known vulnerabilities, GitHub Actions for the acceptance and the release decision ([`.github/workflows/acceptance.yml`](.github/workflows/acceptance.yml)) |
 
 ## Datasets
 
