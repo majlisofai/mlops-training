@@ -187,7 +187,7 @@ Each TODO raises `NotImplementedError` until you delete that line. The comments 
 python exercises/monitoring/monitor.py
 ```
 
-> **Check:** every feature has `shift 0.00 sd` and spread `x1`, `Evidently flags (p < 0.05): none`, `served = recomputed for all 7 features (80 entries)`, `0.57 of the cars predicted to score points`, and `MONITOR OK: no alerts`. The command exits with 0 (`echo $?`).
+> **Check:** every feature has `shift 0.00 sd` and spread `x1`, `Evidently flags (p < 0.05): none`, `served = recomputed for all 7 features (80 entries)`, `0.57 of the cars predicted to score points` (if you wrote TODO 4), and `MONITOR OK: no alerts`. The command exits with 0 (`echo $?`).
 
 The reference window against itself must be quiet. That is the first test of any monitor: it does not alert on normal data.
 
@@ -368,11 +368,13 @@ It writes the summary table to the run page and keeps `results/monitoring/` (wit
 3. **Make `06-monitoring` the default branch of your fork** (**Settings → General → Default branch**), so that GitHub shows the **Run workflow** button and runs the daily schedule.
 4. Your push started the workflow **monitor** with the reference window.
 
-> **Check:** the job **Replay and monitor** succeeds in about three minutes. The run page shows `Monitoring: OK, no alerts` and a table with five checks.
+> **Check:** the job **Replay and monitor** succeeds in about two minutes (we measured 1 min 28 s to 1 min 54 s). The run page shows `Monitoring: OK, no alerts` and a table with five checks, the same results as in step 5.
 
 Now a storm. Open **Actions → monitor → Run workflow**, set **scenario** to `wet_race`, and click **Run workflow**.
 
-> **Check:** step **4. Run the monitor** fails with `MONITOR ALERT: input drift`, and the job fails. The run page shows `Monitoring: ALERT: input drift` and `rain_prob: mean 0.92 vs 0.185 in the reference, shift 10.41 sd (max 2.0)`. Download the artifact `monitoring-report` to see the Evidently report.
+> **Check:** step **4. Run the monitor** fails with `MONITOR ALERT: input drift`, and the job fails. The run page shows `Monitoring: ALERT: input drift` and `rain_prob: mean 0.92 vs 0.185 in the reference, shift 10.41 sd (max 2.0)`, the same numbers as in your codespace. Download the artifact `monitoring-report` to see the Evidently report, the prediction log and the alerts.
+
+Try `serving_skew` and `season_2026` too: they fail with `service health, training-serving skew` and with `delayed labels` (accuracy 0.706).
 
 When a run fails, GitHub notifies the person who started it; for the schedule, the person who last changed the schedule in the workflow file (if their Actions notifications are on). That is the simplest alert channel there is.
 
