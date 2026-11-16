@@ -6,3 +6,6 @@ __pycache__/
 mlflow.db
 mlartifacts/
 mlruns/
+
+# Classroom slide decks: local only (ELM and Emeritus branding)
+slides/
