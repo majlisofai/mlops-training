@@ -13,3 +13,7 @@ gate_report.*
 
 # Load tests (exercises/serve-model)
 results/
+
+# Recovery and challenger (exercises/recovery)
+comparison_report.md
+incident_evidence.md

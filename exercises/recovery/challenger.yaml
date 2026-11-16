@@ -1,0 +1,14 @@
+# The challenger you propose. train_challenger.py trains it and registers it as f1-points-finish@challenger.
+# Controlled: the same model, hyperparameters and seed as the champion (lesson 04 candidate.yaml).
+# Only the training data changes, so a difference in compare.py comes from the data.
+
+proposed_by: your-name
+model: forest
+hyperparameters:
+  n_estimators: 300
+  max_depth: 8
+  min_samples_leaf: 5
+data:
+  history_seasons: [2023, 2024, 2025]  # races.csv. The last three seasons: the pecking order moves.
+  train_2026_rounds: [1, 2, 3, 4]      # 2026 races with final labels, all before the test window
+  weight_2026: 1                       # sample weight of a 2026 entry; a history entry weighs 1

@@ -1,0 +1,12 @@
+# Every labelled race before the test window: 2021-2025 and 2026 rounds 1 to 4.
+# The obvious retrain. compare.py: not better than the champion by the margin.
+proposed_by: example-all-history
+model: forest
+hyperparameters:
+  n_estimators: 300
+  max_depth: 8
+  min_samples_leaf: 5
+data:
+  history_seasons: [2021, 2022, 2023, 2024, 2025]
+  train_2026_rounds: [1, 2, 3, 4]
+  weight_2026: 1

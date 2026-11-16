@@ -1,0 +1,12 @@
+# The recent window, with each 2026 entry counted five times: "2026 is what matters now".
+# compare.py: more accurate, but it ranks the cars worse (ROC AUC falls).
+proposed_by: example-heavy-2026
+model: forest
+hyperparameters:
+  n_estimators: 300
+  max_depth: 8
+  min_samples_leaf: 5
+data:
+  history_seasons: [2023, 2024, 2025]
+  train_2026_rounds: [1, 2, 3, 4]
+  weight_2026: 5

@@ -1,0 +1,4 @@
+# The packages the challenger workflow needs in GitHub Actions: the lesson 04 pipeline
+# (train, gates, promote), which is all that train_challenger.py and compare.py need too.
+# The same versions as .devcontainer/requirements.txt.
+-r ../quality-gates/requirements-ci.txt

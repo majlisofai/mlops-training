@@ -1,0 +1,26 @@
+# How compare.py decides between @champion and @challenger.
+# Both models are measured on the same races, which neither of them saw in training.
+# README.md (step 8) explains the split and why each number was chosen.
+
+model_name: f1-points-finish
+
+data:
+  races: f1/data/races.csv                         # 2021-2025, labels final
+  provisional_2026: f1/data/season_2026_provisional.csv  # 2026 pre-race inputs (and provisional results)
+  final_2026: f1/data/season_2026_final.csv        # 2026 final labels, 2-26 h after each race
+
+# The test window: the last four 2026 races with final labels. 80 entries.
+# A challenger may train on 2026 races before round 5 only.
+test_rounds_2026: [5, 6, 7, 8]
+
+rules:
+  min_accuracy_gain: 0.05          # 4 more right calls in 80. Less is within the noise of 4 races.
+  max_roc_auc_drop: 0.02           # the challenger may not rank cars worse than the champion
+  max_subgroup_drop: 0.10          # accuracy per rookie / team_tier group may not fall by more
+  min_margin_over_grid_rule: 0.02  # the lesson 04 gate, measured on the test window
+
+# The API contract (lesson 05, API v1). A challenger that needs other inputs cannot be served.
+api_inputs: [grid, quali_gap_ms, driver_form, team_form, team_dnf_rate, rain_prob, circuit_type]
+
+# Known only after the race (lesson 04 criteria.yaml).
+forbidden_features: [finish_position, points, status, laps_completed, fastest_lap, actual_rain, points_finish]

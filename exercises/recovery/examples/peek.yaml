@@ -1,0 +1,12 @@
+# All eight 2026 races in training, the test window included. It has seen the answers.
+# compare.py: very accurate on the test window, and blocked by the time-split gate.
+proposed_by: example-peek
+model: forest
+hyperparameters:
+  n_estimators: 300
+  max_depth: 8
+  min_samples_leaf: 5
+data:
+  history_seasons: [2023, 2024, 2025]
+  train_2026_rounds: [1, 2, 3, 4, 5, 6, 7, 8]
+  weight_2026: 1

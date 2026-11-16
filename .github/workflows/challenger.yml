@@ -1,0 +1,71 @@
+# Champion vs challenger for f1-points-finish (lesson 07, exercises/recovery).
+# Build the champion with the lesson 04 pipeline, train a challenger on newer data in time order,
+# compare both on the same held-out 2026 races, and fail unless the challenger is better by the
+# margin in comparison.yaml. Promotion is not done here: it takes the lesson 04 path (gates + approval).
+name: challenger
+
+on:
+  push:
+    paths:
+      - "exercises/recovery/**"
+      - ".github/workflows/challenger.yml"
+  workflow_dispatch:
+    inputs:
+      challenger:
+        description: "Challenger file to train and compare"
+        type: string
+        default: exercises/recovery/challenger.yaml
+      trainer:
+        description: "Training script: exercises/recovery/train_challenger.py is yours"
+        type: string
+        default: exercises/recovery/solution/train_challenger.py
+
+permissions:
+  contents: read
+
+env:
+  # Each run has its own MLflow store, a sqlite file in the workspace. It holds the champion and the challenger.
+  MLFLOW_TRACKING_URI: sqlite:///mlflow.db
+  MLFLOW_DISABLE_AGENT_HINT: "1"
+  CHALLENGER: ${{ inputs.challenger || 'exercises/recovery/challenger.yaml' }}
+  TRAINER: ${{ inputs.trainer || 'exercises/recovery/solution/train_challenger.py' }}
+
+jobs:
+  compare:
+    name: Champion vs challenger
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            exercises/quality-gates/requirements-ci.txt
+            exercises/recovery/requirements-ci.txt
+      - name: Install packages
+        run: pip install -r exercises/recovery/requirements-ci.txt
+
+      - name: 1. Build the champion (lesson 04 pipeline)
+        run: |
+          GATES=exercises/quality-gates/solution/test_gates.py APPROVER=github-actions \
+            bash exercises/quality-gates/run_pipeline.sh
+      - name: 2. Train the challenger
+        run: |
+          echo "Challenger file: \`$CHALLENGER\`. Trainer: \`$TRAINER\`." >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+          python "$TRAINER" --challenger "$CHALLENGER"
+      - name: 3. Compare champion and challenger
+        run: python exercises/recovery/compare.py
+
+      - name: Upload the comparison
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: comparison
+          path: |
+            comparison_report.md
+            gate_report.*
+            mlflow.db
+            mlruns/
+          if-no-files-found: ignore
