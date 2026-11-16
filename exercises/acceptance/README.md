@@ -91,7 +91,7 @@ ls -l .secrets/api.env
 git check-ignore -v .secrets/api.env
 ```
 
-> **Check:** `Wrote a client key and an admin key to .secrets/api.env (git ignores it).`, the file is `-rw-------` (only you can read it), and git names the rule that ignores it: `.gitignore:18:.secrets/	.secrets/api.env`.
+> **Check:** `Wrote a client key and an admin key to .secrets/api.env (git ignores it).`, the file is `-rw-------` (only you can read it), and git names the rule that ignores it: `.gitignore:19:.secrets/	.secrets/api.env`.
 
 Load the keys into this terminal. Do this again in every new terminal you open in this lesson:
 

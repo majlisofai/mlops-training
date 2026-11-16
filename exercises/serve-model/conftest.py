@@ -12,7 +12,7 @@ import csv
 import os
 from pathlib import Path
 
-import httpx
+import httpx2
 import pytest
 from fastapi.testclient import TestClient
 
@@ -27,7 +27,7 @@ def client():
     """A client for the API. The model is loaded once for all the tests."""
     if os.environ.get("API_URL"):  # lesson 09: test a running API, with a client key
         headers = {"X-API-Key": os.environ["API_KEY"]} if os.environ.get("API_KEY") else {}
-        with httpx.Client(base_url=os.environ["API_URL"], headers=headers, timeout=60) as live:
+        with httpx2.Client(base_url=os.environ["API_URL"], headers=headers, timeout=60) as live:
             yield live
         return
     test_client = TestClient(app)

@@ -17,7 +17,7 @@ import secrets
 import sys
 from pathlib import Path
 
-import httpx
+import httpx2
 import pytest
 
 HERE = Path(__file__).parent
@@ -46,10 +46,10 @@ def load_app(app_file: Path):
 def client(request):
     """A client for the API: the running API at API_URL, or app.py in the test process."""
     if API_URL:
-        with httpx.Client(base_url=API_URL, timeout=60) as live:
+        with httpx2.Client(base_url=API_URL, timeout=60) as live:
             try:
                 live.get("/health").raise_for_status()
-            except httpx.HTTPError as err:
+            except httpx2.HTTPError as err:
                 pytest.exit(f"The API at {API_URL} does not answer /health: {err}", returncode=1)
             yield live
         return

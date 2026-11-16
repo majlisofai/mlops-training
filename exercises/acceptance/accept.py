@@ -36,7 +36,7 @@ from pathlib import Path
 
 os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "2")
 
-import httpx  # noqa: E402
+import httpx2  # noqa: E402
 import mlflow  # noqa: E402
 import yaml  # noqa: E402
 from mlflow import MlflowClient  # noqa: E402
@@ -227,7 +227,7 @@ class Acceptance:
 
     def gate_deployment(self, gate: Gate, log: Path):
         try:
-            health = httpx.get(f"{self.api_url}/health", timeout=10).json()
+            health = httpx2.get(f"{self.api_url}/health", timeout=10).json()
         except Exception as err:
             log.write_text(f"GET {self.api_url}/health\n{err}\n")
             gate.status, gate.evidence = "FAIL", f"the API at {self.api_url} does not answer: {err}"
