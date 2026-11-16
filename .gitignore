@@ -13,3 +13,6 @@ gate_report.*
 
 # Load tests (exercises/serve-model)
 results/
+
+# Monitoring (exercises/monitoring): the prediction log, replay manifests, incidents
+logs/

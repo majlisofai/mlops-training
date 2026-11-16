@@ -2,6 +2,7 @@
 
 The model is loaded once, at start-up, from MODEL_URI (default models:/f1-points-finish@champion).
 POST /admin/reload loads it again, for example after promote.py moved @champion.
+When PREDICTION_LOG is set (lesson 06), every request to /v1/predict is also written to that file.
 
 Endpoints:
     GET  /health         status, model name, version and alias
@@ -12,10 +13,14 @@ Endpoints:
 Usage:
     uvicorn app:app --app-dir exercises/serve-model --port 8000
     MODEL_URI=models:/f1-points-finish/1 uvicorn app:app --app-dir exercises/serve-model --port 8000
+    PREDICTION_LOG=logs/predictions.jsonl uvicorn app:app --app-dir exercises/serve-model --port 8000
 """
 
+import json
 import os
 import re
+import threading
+import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from enum import Enum
@@ -37,6 +42,9 @@ MODEL_URI = os.environ.get("MODEL_URI", "models:/f1-points-finish@champion")
 # The seven model inputs, all known before the race. See f1/data/README.md.
 INPUTS = ["grid", "quali_gap_ms", "driver_form", "team_form", "team_dnf_rate", "rain_prob", "circuit_type"]
 MAX_BATCH = 1000
+# Lesson 06: the prediction log, one JSON line per entry. Off when PREDICTION_LOG is not set.
+PREDICTION_LOG = os.environ.get("PREDICTION_LOG")
+_log_lock = threading.Lock()
 
 
 class CircuitType(str, Enum):
@@ -112,6 +120,35 @@ def load_model(uri: str) -> dict:
     }
 
 
+def log_request(request: Request, status: int, entries: list, served: dict | None = None,
+                predictions=None, probabilities=None, errors: dict | None = None):
+    """Append one line per entry to PREDICTION_LOG: the inputs, the answer and the model version.
+
+    Rejected requests (422) are logged too, with the reason for each entry: the monitor needs them.
+    The client can send X-Request-ID to find its request in the log later.
+    """
+    if not PREDICTION_LOG:
+        return
+    common = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+        "request_id": request.headers.get("x-request-id") or uuid.uuid4().hex,
+        "status": status,
+        "model_name": served["model_name"] if served else None,
+        "model_version": served["model_version"] if served else None,
+    }
+    lines = []
+    for i, inputs in enumerate(entries):
+        line = {**common, "entry": i, "inputs": inputs}
+        if status == 200:
+            line |= {"prediction": int(predictions[i]), "probability": round(float(probabilities[i]), 6)}
+        else:
+            line["errors"] = (errors or {}).get(i, [])
+        lines.append(json.dumps(line))
+    os.makedirs(os.path.dirname(PREDICTION_LOG) or ".", exist_ok=True)
+    with _log_lock, open(PREDICTION_LOG, "a") as f:
+        f.write("\n".join(lines) + "\n")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Load the model once, before the first request. If it fails, the API does not start.
@@ -127,6 +164,17 @@ app = FastAPI(title="f1-points-finish", version="1", lifespan=lifespan)
 async def invalid_input(request: Request, exc: RequestValidationError):
     """Answer 422 with one readable line per problem, for example 'entries.0.grid: Input should be ...'."""
     problems = [f"{'.'.join(str(p) for p in e['loc'][1:]) or 'body'}: {e['msg']}" for e in exc.errors()]
+    if PREDICTION_LOG and request.url.path == "/v1/predict":
+        body = exc.body if isinstance(exc.body, dict) else {}
+        entries = body.get("entries") if isinstance(body.get("entries"), list) else [body]
+        errors = {}  # entry number -> its problems, for example ["grid: Input should be ..."]
+        for e in exc.errors():
+            loc = [str(p) for p in e["loc"][1:]]
+            if len(loc) >= 2 and loc[0] == "entries" and loc[1].isdigit():
+                errors.setdefault(int(loc[1]), []).append(f"{'.'.join(loc[2:]) or 'entry'}: {e['msg']}")
+            else:
+                errors.setdefault(0, []).append(f"{'.'.join(loc) or 'body'}: {e['msg']}")
+        log_request(request, 422, entries, served=getattr(app.state, "served", None), errors=errors)
     return JSONResponse(status_code=422, content={"detail": problems})
 
 
@@ -137,14 +185,16 @@ def health():
 
 
 @app.post("/v1/predict", response_model=PredictResponse)
-def predict(request: PredictRequest):
+def predict(request: PredictRequest, http: Request):
     # Read the model once: the whole batch is answered by one version, even during a reload.
     served = app.state.served
     model = served["model"]
-    X = pd.DataFrame([e.model_dump(mode="json") for e in request.entries])[served["columns"]]
+    entries = [e.model_dump(mode="json") for e in request.entries]
+    X = pd.DataFrame(entries)[served["columns"]]
     proba = model.predict_proba(X)
     # The same rule as model.predict(), without a second pass through the model.
     predictions = model.classes_.take(proba.argmax(axis=1))
+    log_request(http, 200, entries, served, predictions, proba[:, 1])
     return PredictResponse(
         model_name=served["model_name"],
         model_version=served["model_version"],

@@ -1,0 +1,122 @@
+# Production monitoring for f1-points-finish (lesson 06, exercises/monitoring).
+# Promote a champion with the lesson 04 pipeline, start the API with its prediction log,
+# replay a window (or inject a Drift Detective fault), and run the monitor.
+# The job fails when the monitor raises an alert.
+name: monitor
+
+on:
+  push:
+    paths:
+      - "exercises/monitoring/**"
+      - "exercises/serve-model/app.py"
+      - ".github/workflows/monitor.yml"
+  schedule:
+    # Every day at 05:23 UTC, with the reference window: proves that the monitoring pipeline
+    # still works. GitHub runs schedules only on the default branch of the repository.
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "Window to replay, or Drift Detective fault to inject"
+        type: choice
+        default: reference
+        options:
+          - reference
+          - wet_race
+          - serving_skew
+          - season_2026
+          - units_change
+          - stuck_feature
+          - category_renamed
+          - label_delay
+          - normal_weekend
+      monitor:
+        description: "Monitor to run"
+        type: choice
+        default: exercises/monitoring/monitor.py
+        options:
+          - exercises/monitoring/monitor.py
+          - exercises/monitoring/solution/monitor.py
+
+permissions:
+  contents: read
+
+env:
+  # Each run has its own MLflow server and API, on the same ports as the codespace.
+  MLFLOW_TRACKING_URI: http://127.0.0.1:5000
+  MLFLOW_DISABLE_AGENT_HINT: "1"
+  API_URL: http://127.0.0.1:8000
+  PREDICTION_LOG: logs/predictions.jsonl
+  SCENARIO: ${{ inputs.scenario || 'reference' }}
+  MONITOR: ${{ inputs.monitor || 'exercises/monitoring/monitor.py' }}
+
+jobs:
+  monitor:
+    name: Replay and monitor
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            exercises/quality-gates/requirements-ci.txt
+            exercises/monitoring/requirements-ci.txt
+      - name: Install packages
+        run: pip install -r exercises/monitoring/requirements-ci.txt
+
+      - name: Start the MLflow server
+        run: |
+          nohup mlflow server --host 127.0.0.1 --port 5000 \
+            --backend-store-uri sqlite:///mlflow.db --artifacts-destination ./mlartifacts \
+            > mlflow-server.log 2>&1 &
+          timeout 60 bash -c 'until curl -sf http://127.0.0.1:5000/health; do sleep 1; done'
+
+      - name: 1. Promote a champion (lesson 04 pipeline)
+        run: |
+          GATES=exercises/quality-gates/solution/test_gates.py APPROVER=github-actions \
+            bash exercises/quality-gates/run_pipeline.sh
+      - name: 2. Start the API with the prediction log
+        run: |
+          nohup uvicorn app:app --app-dir exercises/serve-model --port 8000 > api.log 2>&1 &
+          if ! timeout 120 bash -c 'until curl -sf http://127.0.0.1:8000/health; do sleep 1; done'; then
+            cat api.log; exit 1
+          fi
+      - name: 3. Replay the window
+        run: |
+          case "$SCENARIO" in
+            reference|wet_race|serving_skew|season_2026)
+              python exercises/monitoring/replay.py "$SCENARIO" ;;
+            *)
+              python exercises/monitoring/inject.py "$SCENARIO" ;;
+          esac
+      - name: 4. Run the monitor
+        run: |
+          # The final 2026 results have arrived: the monitor can check the champion against them.
+          labels=()
+          if [ "$SCENARIO" = season_2026 ]; then labels=(--labels f1/data/season_2026_final.csv); fi
+          python "$MONITOR" "${labels[@]}"
+
+      - name: Monitoring summary
+        if: always()
+        run: |
+          echo "Scenario: \`$SCENARIO\`, monitor: \`$MONITOR\`" >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+          if [ -f results/monitoring/summary.md ]; then
+            cat results/monitoring/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No monitoring summary: the job stopped before the monitor ran." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload the monitoring report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: monitoring-report
+          path: |
+            results/monitoring/
+            logs/
+            api.log
+            mlflow-server.log
+          if-no-files-found: ignore
