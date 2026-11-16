@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# Classroom slide decks: local only (ELM and Emeritus branding)
+slides/
