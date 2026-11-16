@@ -169,12 +169,15 @@ jobs:
           if [ -n "$approver" ]; then
             echo "APPROVER=$approver" >> "$GITHUB_ENV"
             echo "VIA=github-environment production (approved by a required reviewer)" >> "$GITHUB_ENV"
+            echo "REASON=every gate passed; approved in the environment production after review" >> "$GITHUB_ENV"
           else
+            # Without required reviewers GitHub runs this job at once. Say so in the dossier.
             echo "APPROVER=$GITHUB_ACTOR" >> "$GITHUB_ENV"
             echo "VIA=github-environment production, NO REVIEW RECORDED (the environment has no required reviewers; $GITHUB_ACTOR started the run)" >> "$GITHUB_ENV"
+            echo "REASON=every gate passed; nobody reviewed the dossier before this job ran" >> "$GITHUB_ENV"
           fi
       - name: 8. Record the decision
-        run: python exercises/acceptance/decide.py --decision ship --approver "$APPROVER" --via "$VIA"
+        run: python exercises/acceptance/decide.py --decision ship --approver "$APPROVER" --via "$VIA" --reason "$REASON"
 
       - name: Upload the decided dossier
         uses: actions/upload-artifact@v7

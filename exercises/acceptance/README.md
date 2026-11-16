@@ -458,11 +458,19 @@ Why throwaway keys? The keys protect the API inside this one job, for a few minu
 
 Your push started the workflow **acceptance** with your files and no fault.
 
-> **Check:** the job **Acceptance suite** passes and the run page shows `Acceptance: f1-points-finish version 1: ready for a human decision` with ten gates PASS. The job **Ship decision** waits: **Waiting for review: production needs approval**. Read the gate table, then click **Review deployments → production → Approve and deploy**. The job prints `DECISION: SHIP for f1-points-finish version 1, set by <your-user> via github-environment production (approved by a required reviewer).`
+> **Check:** before TODO 1 to TODO 4, and without a model card, this run is blocked: `DECISION: DO NOT SHIP (Access tests: FAILED; Model card: EVIDENCE MISSING)`, with `3 passed, 3 failed, 2 not written` for the access tests. With your work committed, the job **Acceptance suite** passes in about three minutes, and the run page shows `Acceptance: f1-points-finish version 1: ready for a human decision` with ten gates PASS (on GitHub we measured a p95 latency of 130 ms). The job **Ship decision** waits: **Waiting for review: production needs approval**. Read the gate table, then click **Review deployments → production → Approve and deploy**. The job prints `DECISION: SHIP for f1-points-finish version 1, set by <your-user> via github-environment production (approved by a required reviewer).`
+
+Without a required reviewer, GitHub runs **Ship decision** at once, and the dossier says so: `Via: github-environment production, NO REVIEW RECORDED (the environment has no required reviewers; ...)`. That is what happens in the course repository, where `production` has no reviewers.
 
 Now inject a fault. Open **Actions → acceptance → Run workflow**, choose the fault `tamper` (or `no-auth`), and click **Run workflow**.
 
-> **Check:** step **7. Acceptance suite** fails with `DECISION: DO NOT SHIP (Integrity: signed SHA-256 manifest: FAILED)`, and the job **Ship decision** is skipped: there is nothing to approve.
+> **Check:** step **7. Acceptance suite** fails, and the job **Ship decision** is skipped: there is nothing to approve. On GitHub we measured:
+>
+> | Fault | Gates that failed | What still passed |
+> |---|---|---|
+> | `tamper` | Integrity: `model/model.skops: CHANGED` | The seven quality gates (accuracy 0.846, roc_auc 0.904), the contract and access tests, the SLO (p95 26 ms) |
+> | `no-auth` | Access tests (`4 passed, 4 failed`), dependency audit (6 open findings in pip) | The contract tests and the SLO (p95 270 ms) |
+> | `no-evidence` | Model card and subgroup evidence: `EVIDENCE MISSING` | Everything else |
 
 The workflow input `files` chooses whose `app.py` and access tests run: yours (`trainee`, the default) or the reference solution. Before you finish TODO 1 to TODO 4, a run with your files says do not ship at the access tests: that is the gate doing its job.
 
