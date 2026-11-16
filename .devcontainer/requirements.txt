@@ -34,3 +34,6 @@ uvicorn==0.54.0
 # FastAPI's TestClient. Starlette 1.10 uses httpx2; with the older httpx it warns.
 httpx2==2.16.0
 locust==2.47.0
+
+# Fairness assessment (lesson 08): MetricFrame for per-subgroup metrics
+fairlearn==0.15.0

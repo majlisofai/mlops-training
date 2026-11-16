@@ -1,0 +1,44 @@
+# The parts of the model card that people write and sign.
+# model_card.py adds everything that can be measured: from the MLflow registry and run,
+# the fairness report and the gate report. Replace every <...> before a release review.
+# The section names follow Mitchell et al., "Model Cards for Model Reporting" (FAT* 2019).
+
+model_name: f1-points-finish
+
+accountability:
+  owner: "<model owner: name and role>"          # answers for the model while it is in use
+  approver: "<release approver: name and role>"  # signs the decision below
+  contact: "<where to send questions or complaints about the model>"
+  decision: "<APPROVED, APPROVED WITH CONDITIONS or REJECTED, and why>"
+  decision_date: "<YYYY-MM-DD>"
+
+license: "Course material. Synthetic data generated from seed 2026; no real person or season."
+
+intended_use:
+  primary_uses:
+    - "Before a race, estimate for each car whether it finishes in the points (top 10)."
+    - "Support race-strategy discussions and the race dashboard of the course."
+  primary_users:
+    - "Race engineers and strategists of the synthetic championship (course roles)."
+    - "MLOps trainees, to practise release governance."
+  out_of_scope:
+    - "Judging an individual driver: performance reviews, contracts, seat decisions. The model is not built or checked for that, and it is over-optimistic for rookies."
+    - "Betting, or any decision about a real team, race or person. The data is synthetic."
+    - "Seasons under new regulations (2026) before the model has been checked on them (see the Day 3 drift lessons)."
+
+factors:
+  relevant:
+    - "rookie: first season of the driver. Rookies are few (two drivers per season) and convert grid positions into points less reliably."
+    - "team_tier: top, midfield, backmarker. Midfield cars sit around the points cut-off, so they are the hardest to predict."
+    - "circuit_type: street, permanent, high_speed."
+  note: "These subgroups exist to practise subgroup measurement. They are not protected characteristics. None of them is a model input."
+
+ethical_considerations:
+  - "Personal data: driver_code and driver_name identify a person (synthetic here). They are not model inputs and not in the prediction log; the privacy gates check both."
+  - "Harm: a false positive for a rookie is an expectation the rookie did not meet. If anyone reads the dashboard as a judgement of the driver, inflated expectations make rookies look worse than they are."
+  - "<what your team decided about the rookie gap, and why>"
+
+caveats:
+  - "The rookie group in 2025 is two drivers (48 entries). Every rookie number describes those two people; one entry moves the rookie false positive rate by about 0.05."
+  - "The model was checked on one holdout season. Re-check it when the regulations, the teams or the drivers change."
+  - "<anything else a reviewer should know>"

@@ -1,0 +1,9 @@
+# A forest of 50 trees whose leaves hold at least 50 entries. As accurate as the champion,
+# and less over-optimistic for rookies: a mitigation by model choice.
+proposed_by: example-big-leaves
+model: forest
+leak: false
+hyperparameters:
+  n_estimators: 50
+  max_depth: 8
+  min_samples_leaf: 50

@@ -13,3 +13,8 @@ gate_report.*
 
 # Load tests (exercises/serve-model)
 results/
+
+# Fairness reports, model cards and prediction logs (exercises/fairness)
+fairness_report/
+fairness_gate_report.*
+logs/

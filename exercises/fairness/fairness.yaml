@@ -1,0 +1,33 @@
+# Fairness and privacy requirements for f1-points-finish.
+# The gates in test_fairness.py and test_privacy.py read this file.
+# README.md explains why each number was chosen. Write the numbers down before you
+# look at a candidate, and do not change them to make a model pass.
+
+model_name: f1-points-finish
+test_season: 2025
+data: f1/data/races.csv
+
+# Subgroups we measure. They are NOT protected characteristics (see f1/data/README.md):
+# they exist to practise subgroup measurement. None of them is a model input.
+report_subgroups: [rookie, team_tier, circuit_type]
+
+fairness:
+  # The gated comparison: rookie entries (rookie = True) against all other entries.
+  # A gap is the rookie rate minus the rate of everyone else. Positive = worse for rookies.
+  gated_subgroup: rookie
+  max_fpr_gap: 0.55   # false positive rate gap. Grid rule 0.568. "Do not inflate rookie expectations more than the grid rule."
+  max_fnr_gap: 0.10   # false negative rate gap. Grid rule 0.113. "Do not write off scoring rookies more than the grid rule."
+  # Too few rows to measure anything: the gate fails, because it cannot check the requirement.
+  min_group_entries: 30
+  # Warnings: the gate still decides, but the report says the number is shaky.
+  warn_group_drivers: 5       # fewer drivers than this: the group result describes a few people
+  warn_rate_base: 30          # an FPR on fewer actual non-scorers, or an FNR on fewer actual scorers
+
+privacy:
+  # About a person (synthetic, but treat them as personal data). Never a model input,
+  # never in a prediction log, not as a column name and not as a value.
+  personal_identifiers: [driver_code, driver_name]
+  # Used to measure fairness, not to decide. Never a model input.
+  reporting_only: [rookie, team_tier]
+  # A published group result must cover at least this many drivers. A group of one is a person.
+  min_drivers_per_published_cell: 2
