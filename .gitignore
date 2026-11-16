@@ -18,3 +18,6 @@ results/
 fairness_report/
 fairness_gate_report.*
 logs/
+
+# Classroom slide decks: local only (ELM and Emeritus branding)
+slides/
